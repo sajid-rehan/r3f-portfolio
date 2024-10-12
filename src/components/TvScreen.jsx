@@ -8,7 +8,7 @@ import React from 'react';
 
 export function TvScreen(props) {
   const { nodes } = useGLTF('./models/tvScreen.glb');
-  const textureTv = useVideoTexture('/textures/screensaver.mp4');
+  const textureTv = useVideoTexture('./textures/screensaver.mp4');
 
   return (
     <group {...props} dispose={null}>

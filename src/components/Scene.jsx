@@ -6,10 +6,35 @@ Command: npx gltfjsx@6.5.0 public/models/scene.glb
 import { useAnimations, useGLTF, useTexture } from '@react-three/drei';
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { useNavigation } from './../contexts/NavigationContext';
+import CameraAnimator from './../util/CameraAnimator';
+import CAMERA_CONFIG from './../util/cameraConfig';
+import NAVIGATION_SECTIONS from './../util/navigationEnums';
 
 export function Scene(props) {
   const groupRef = useRef();
   const { nodes, animations } = useGLTF('models/scene.glb');
+  const bakedTexture = useTexture('./textures/baked.jpg');
+  bakedTexture.flipY = false;
+  bakedTexture.colorSpace = THREE.SRGBColorSpace;
+  const textureMaterial = new THREE.MeshStandardMaterial({
+    map: bakedTexture,
+  });
+
+  const { setActiveSection } = useNavigation();
+  const { actions, names } = useAnimations(animations, groupRef);
+
+  useEffect(() => {
+    if (actions && names.length > 0) {
+      actions[names[0]].reset().play();
+    }
+  }, [actions, names]);
+
+  const handleNavigationClick = async (section) => {
+    const { position, rotation } = CAMERA_CONFIG[section];
+    await CameraAnimator.animateTo(position, rotation);
+    setActiveSection(section);
+  };
 
   return (
     <group ref={groupRef} {...props} dispose={null}>
@@ -28,6 +53,7 @@ export function Scene(props) {
           name='about'
           geometry={nodes.about.geometry}
           material={textureMaterial}
+          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.ABOUT)}
           onPointerOver={() => (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = 'default')}
         />
@@ -35,6 +61,7 @@ export function Scene(props) {
           name='skills'
           geometry={nodes.skills.geometry}
           material={textureMaterial}
+          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.SKILLS)}
           onPointerOver={() => (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = 'default')}
         />
@@ -42,6 +69,7 @@ export function Scene(props) {
           name='projects'
           geometry={nodes.projects.geometry}
           material={textureMaterial}
+          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.PROJECTS)}
           onPointerOver={() => (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = 'default')}
         />
@@ -49,6 +77,7 @@ export function Scene(props) {
           name='contact'
           geometry={nodes.contact.geometry}
           material={textureMaterial}
+          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.CONTACT)}
           onPointerOver={() => (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = 'default')}
         />

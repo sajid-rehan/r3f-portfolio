@@ -5,9 +5,32 @@ Command: npx gltfjsx@6.5.2 public/models/laptopScreen.glb
 
 import { Html, useGLTF } from '@react-three/drei';
 import React, { useEffect, useState } from 'react';
+import { useNavigation } from './../contexts/NavigationContext';
+import NAVIGATION_SECTIONS from './../util/navigationEnums';
+import About from './About/About';
 
 export function LaptopScreen(props) {
   const { nodes } = useGLTF('./models/laptopScreen.glb');
+  const { activeSection } = useNavigation();
+
+  const laptopSections = [
+    NAVIGATION_SECTIONS.ABOUT,
+    NAVIGATION_SECTIONS.SKILLS,
+    NAVIGATION_SECTIONS.PROJECTS,
+  ];
+
+  const isLaptopFocused = laptopSections.includes(activeSection);
+  const [fadeIn, setFadeIn] = useState(false);
+
+  useEffect(() => {
+    if (isLaptopFocused) {
+      setTimeout(() => {
+        setFadeIn(true);
+      }, 500);
+    } else {
+      setFadeIn(false);
+    }
+  }, [isLaptopFocused, activeSection]);
 
   return (
     <group {...props} dispose={null}>
@@ -15,6 +38,30 @@ export function LaptopScreen(props) {
         geometry={nodes.laptop_screen.geometry}
         material={nodes.laptop_screen.material}
       >
+        {isLaptopFocused && (
+          <Html
+            transform
+            occlude
+            position={[
+              1.2335000000000023, 2.5600000000000023, -4.308700000000026,
+            ]}
+            rotation={[0, 0.28063, 0]}
+            scale={0.02}
+            style={{
+              width: '2070px',
+              height: '1327px',
+              borderRadius: '3px',
+              overflowY: 'auto',
+              padding: '0',
+              transition: 'opacity 1s ease-in-out',
+              opacity: fadeIn ? 1 : 0,
+            }}
+          >
+            <div onPointerDown={(e) => e.stopPropagation()}>
+              <About />
+            </div>
+          </Html>
+        )}
       </mesh>
     </group>
   );

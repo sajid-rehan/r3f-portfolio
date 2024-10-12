@@ -11,12 +11,12 @@ import { SkeletonUtils } from 'three-stdlib';
 
 export function Avatar(props) {
   const group = React.useRef();
-  const { scene, animations } = useGLTF('models/avatar.glb');
+  const { scene, animations } = useGLTF('./models/avatar.glb');
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes } = useGraph(clone);
   const { actions, names } = useAnimations(animations, group);
 
-  const texture = useTexture('/textures/avatar.jpg');
+  const texture = useTexture('./textures/avatar.jpg');
   texture.flipY = false;
   texture.colorSpace = THREE.SRGBColorSpace;
   const textureMaterial = new THREE.MeshStandardMaterial({ map: texture });
