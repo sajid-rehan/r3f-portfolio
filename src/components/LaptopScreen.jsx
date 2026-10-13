@@ -7,7 +7,7 @@ import { Html, useGLTF } from '@react-three/drei';
 import React, { useEffect, useState } from 'react';
 import { useNavigation } from './../contexts/NavigationContext';
 import NAVIGATION_SECTIONS from './../util/navigationEnums';
-import About from './About/About';
+import Desktop from './../desktop/Desktop';
 
 export function LaptopScreen(props) {
   const { nodes } = useGLTF('./models/laptopScreen.glb');
@@ -46,19 +46,22 @@ export function LaptopScreen(props) {
               1.2335000000000023, 2.5600000000000023, -4.308700000000026,
             ]}
             rotation={[0, 0.28063, 0]}
-            scale={0.02}
+            scale={0.02875}
             style={{
-              width: '2070px',
-              height: '1327px',
+              width: '1440px',
+              height: '923px',
               borderRadius: '3px',
-              overflowY: 'auto',
+              overflow: 'hidden',
               padding: '0',
               transition: 'opacity 1s ease-in-out',
               opacity: fadeIn ? 1 : 0,
             }}
           >
-            <div onPointerDown={(e) => e.stopPropagation()}>
-              <About />
+            <div
+              style={{ width: '100%', height: '100%' }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <Desktop focusApp={activeSection} />
             </div>
           </Html>
         )}
