@@ -4,24 +4,95 @@ Command: npx gltfjsx@6.5.0 public/models/scene.glb
 */
 
 import { useAnimations, useGLTF, useTexture } from '@react-three/drei';
-import React, { useEffect, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useNavigation } from './../contexts/NavigationContext';
 import CameraAnimator from './../util/CameraAnimator';
-import CAMERA_CONFIG from './../util/cameraConfig';
+import { poseFor } from './../util/responsiveCamera';
 import NAVIGATION_SECTIONS from './../util/navigationEnums';
+import { isCompactViewport } from './../util/viewport';
+
+// Clickable boards on the signpost, top to bottom.
+const SIGNS = [
+  ['about', NAVIGATION_SECTIONS.ABOUT],
+  ['skills', NAVIGATION_SECTIONS.SKILLS],
+  ['projects', NAVIGATION_SECTIONS.PROJECTS],
+  ['contact', NAVIGATION_SECTIONS.CONTACT],
+];
+
+const GLOW = 0.9; // peak emissive intensity of a lit board
+const LIFT = 0.04; // how far a lit board pops out toward the viewer
 
 export function Scene(props) {
   const groupRef = useRef();
   const { nodes, animations } = useGLTF('models/scene.glb');
-  const bakedTexture = useTexture('./textures/baked.jpg');
+  // Small screens get the 2048px version (a third of the download, and a
+  // quarter of the GPU memory).
+  const bakedTexture = useTexture(
+    isCompactViewport()
+      ? './textures/baked-small.webp'
+      : './textures/baked.webp',
+  );
   bakedTexture.flipY = false;
   bakedTexture.colorSpace = THREE.SRGBColorSpace;
-  const textureMaterial = new THREE.MeshStandardMaterial({
-    map: bakedTexture,
-  });
+  const textureMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({ map: bakedTexture }),
+    [bakedTexture],
+  );
 
-  const { setActiveSection } = useNavigation();
+  // Each board gets its own copy of the material so it can glow on its own.
+  const signMaterials = useMemo(
+    () =>
+      Object.fromEntries(
+        SIGNS.map(([name]) => {
+          const m = textureMaterial.clone();
+          m.emissive = new THREE.Color('#ffb347');
+          m.emissiveMap = bakedTexture; // glow keeps the wood grain
+          m.emissiveIntensity = 0;
+          return [name, m];
+        }),
+      ),
+    [textureMaterial, bakedTexture],
+  );
+
+  const { activeSection, setActiveSection, setPendingDesktop } =
+    useNavigation();
+  const inSignpostView =
+    !activeSection || activeSection === NAVIGATION_SECTIONS.NAVIGATION;
+
+  // Hover / tap glow and the occasional wave of light across the boards.
+  const meshes = useRef({});
+  const hovered = useRef(null);
+  const interacted = useRef(false);
+  const levels = useRef(Object.fromEntries(SIGNS.map(([n]) => [n, 0])));
+  const appearedAt = useRef(null);
+  // Visitors who ask their system for less motion get no pulsing wave.
+  const calm = useMemo(
+    () =>
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+    [],
+  );
+
+  useFrame((state, delta) => {
+    const now = state.clock.elapsedTime;
+    appearedAt.current ??= now;
+    const t = now - appearedAt.current - 1.5; // first wave 1.5 s after load
+    SIGNS.forEach(([name], i) => {
+      let target = 0;
+      if (hovered.current === name) target = 1;
+      if (!calm && inSignpostView && !interacted.current && t > 0) {
+        const dt = (t % 8) - i * 0.28; // a wave every 8 s, sign by sign
+        if (dt > 0 && dt < 1.2)
+          target = Math.max(target, 0.8 * Math.sin((Math.PI * dt) / 1.2));
+      }
+      const lv = levels.current;
+      lv[name] += (target - lv[name]) * Math.min(1, delta * 10);
+      signMaterials[name].emissiveIntensity = lv[name] * GLOW;
+      if (meshes.current[name])
+        meshes.current[name].position.x = lv[name] * LIFT;
+    });
+  });
   const { actions, names } = useAnimations(animations, groupRef);
 
   useEffect(() => {
@@ -31,8 +102,15 @@ export function Scene(props) {
   }, [actions, names]);
 
   const handleNavigationClick = async (section) => {
-    const { position, rotation } = CAMERA_CONFIG[section];
+    const { position, rotation } = poseFor(section);
     await CameraAnimator.animateTo(position, rotation);
+
+    // Small screens: instead of showing the desktop on the tiny 3D laptop
+    // screen, fade out and hand over to the full-screen desktop.
+    if (section !== NAVIGATION_SECTIONS.CONTACT && isCompactViewport()) {
+      setPendingDesktop(section);
+      return;
+    }
     setActiveSection(section);
   };
 
@@ -49,38 +127,25 @@ export function Scene(props) {
           geometry={nodes.visitcard.geometry}
           material={textureMaterial}
         />
-        <mesh
-          name='about'
-          geometry={nodes.about.geometry}
-          material={textureMaterial}
-          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.ABOUT)}
-          onPointerOver={() => (document.body.style.cursor = 'pointer')}
-          onPointerOut={() => (document.body.style.cursor = 'default')}
-        />
-        <mesh
-          name='skills'
-          geometry={nodes.skills.geometry}
-          material={textureMaterial}
-          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.SKILLS)}
-          onPointerOver={() => (document.body.style.cursor = 'pointer')}
-          onPointerOut={() => (document.body.style.cursor = 'default')}
-        />
-        <mesh
-          name='projects'
-          geometry={nodes.projects.geometry}
-          material={textureMaterial}
-          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.PROJECTS)}
-          onPointerOver={() => (document.body.style.cursor = 'pointer')}
-          onPointerOut={() => (document.body.style.cursor = 'default')}
-        />
-        <mesh
-          name='contact'
-          geometry={nodes.contact.geometry}
-          material={textureMaterial}
-          onClick={() => handleNavigationClick(NAVIGATION_SECTIONS.CONTACT)}
-          onPointerOver={() => (document.body.style.cursor = 'pointer')}
-          onPointerOut={() => (document.body.style.cursor = 'default')}
-        />
+        {SIGNS.map(([name, section]) => (
+          <mesh
+            key={name}
+            name={name}
+            ref={(m) => (meshes.current[name] = m)}
+            geometry={nodes[name].geometry}
+            material={signMaterials[name]}
+            onClick={() => handleNavigationClick(section)}
+            onPointerOver={() => {
+              hovered.current = name;
+              interacted.current = true;
+              document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={() => {
+              if (hovered.current === name) hovered.current = null;
+              document.body.style.cursor = 'default';
+            }}
+          />
+        ))}
       </group>
     </group>
   );
