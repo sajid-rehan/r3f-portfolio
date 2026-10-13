@@ -6,17 +6,23 @@ import { useNavigation } from './../contexts/NavigationContext';
 import { useOrbitControls } from './../contexts/OrbitControlsContext';
 import DATA from './../data/data';
 import CameraAnimator from './../util/CameraAnimator';
+import { getCameraFit, poseFor } from './../util/responsiveCamera';
 import NAVIGATION_SECTIONS from './../util/navigationEnums';
-import { notifyInfo, notifyWarning } from './../util/notify';
+import { notifyInfo } from './../util/notify';
 import { Avatar } from './Avatar';
 import { LaptopScreen } from './LaptopScreen';
 import { MonitorScreen } from './MonitorScreen';
 import { Scene } from './Scene';
 import { TvScreen } from './TvScreen';
 
-export const Experience = () => {
+/**
+ * @param {Object} props
+ * @param {boolean} [props.fromLaptop] The camera starts at the laptop (coming
+ * back from the desktop) and zooms out to the explore view.
+ */
+export const Experience = ({ fromLaptop = false }) => {
   const orbitRef = useRef();
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const { controlsEnabled, setControlsEnabled } = useOrbitControls();
   const { activeSection } = useNavigation();
   const [isExploreNotificationShown, setIsExploreNotificationShown] =
@@ -34,11 +40,11 @@ export const Experience = () => {
   }, [activeSection, setControlsEnabled]);
 
   useEffect(() => {
-    notifyWarning(DATA.notifications.devWarning, 20000);
-  }, []);
-
-  useEffect(() => {
     CameraAnimator.init(camera, 0.05);
+    if (fromLaptop) {
+      const { position, rotation } = poseFor(NAVIGATION_SECTIONS.EXPLORE);
+      CameraAnimator.animateTo(position, rotation);
+    }
   }, [camera]);
 
   useFrame(() => {
@@ -51,7 +57,9 @@ export const Experience = () => {
         <OrbitControls
           ref={orbitRef}
           minDistance={1.5}
-          maxDistance={12.69383200755635}
+          maxDistance={
+            12.69383200755635 * getCameraFit(size.width / size.height).dolly
+          }
           enableDamping={true}
           dampingFactor={0.05}
           minAzimuthAngle={THREE.MathUtils.degToRad(-20)}
