@@ -8,7 +8,7 @@ import React from 'react';
 
 export function MonitorScreen(props) {
   const { nodes } = useGLTF('./models/monitorScreen.glb');
-  const textureMonitor = useVideoTexture('./textures/monitor_screen.mp4');
+  const textureMonitor = useVideoTexture('./textures/monitor_screen_web.mp4');
 
   return (
     <group {...props} dispose={null}>

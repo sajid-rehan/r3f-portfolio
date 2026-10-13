@@ -16,7 +16,7 @@ export function Avatar(props) {
   const { nodes } = useGraph(clone);
   const { actions, names } = useAnimations(animations, group);
 
-  const texture = useTexture('./textures/avatar.jpg');
+  const texture = useTexture('./textures/avatar.webp');
   texture.flipY = false;
   texture.colorSpace = THREE.SRGBColorSpace;
   const textureMaterial = new THREE.MeshStandardMaterial({ map: texture });
@@ -68,4 +68,4 @@ export function Avatar(props) {
   );
 }
 
-useGLTF.preload('models/avatar.glb');
+useGLTF.preload('./models/avatar.glb');
